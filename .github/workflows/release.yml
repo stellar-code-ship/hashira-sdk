@@ -34,9 +34,10 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
-      # Trusted publishing needs npm 11.5.1 or later and Node 22.14 or later; the runner image ships
-      # npm 10.x, which fails with an authentication error rather than saying it is too old.
-      - name: Use an npm new enough for trusted publishing
+      # Trusted publishing needs npm 11.5.1 or later, staged publishing 11.15.0 or later, and both
+      # need Node 22.14 or later. The runner image ships npm 10.x, which fails with an
+      # authentication error rather than saying it is too old.
+      - name: Use an npm new enough for trusted and staged publishing
         run: |
           npm install -g npm@latest
           node --version
@@ -81,12 +82,47 @@ jobs:
             exit 1
           fi
 
-          # Published from the repository root, which is where package.json lives. There is no
-          # workspace above it, so npm has no root manifest to object to and this is npm's own
-          # documented shape for a trusted publish. `prepublishOnly` runs here and re-checks the tag.
-          npm publish --access public --provenance
+          # Staged, not published. `npm stage publish` uploads the tarball to a queue where it sits
+          # until a maintainer approves it with 2FA; until then nobody can install it.
+          #
+          # Everything else here guards what goes *into* a tarball — the allowlist, the verifier, a
+          # repository with nothing secret in it, provenance. None of that guards the act of
+          # publishing. Pushing a tag releases on its own, so a compromised account or a workflow
+          # change that lands in a merged pull request reaches consumers with no person involved.
+          # Approval is the proof of presence that closes it, and is why npm built this.
+          #
+          # Run from the repository root, where package.json is. There is no workspace above it, so
+          # npm has no root manifest to object to. `prepublishOnly` runs here and re-checks the tag.
+          npm stage publish --access public --provenance
+
+      # The tag is real and the code is released; the npm version is not live yet. Saying so here
+      # is the difference between a green run meaning "done" and meaning "your turn".
+      - name: Say what is left to do
+        run: |
+          version="$(bun pm pkg get version | tr -d '"')"
+          {
+            echo "### @stellar-code/hashira@$version is staged, not published"
+            echo
+            echo "Nobody can install it until a maintainer approves it with 2FA:"
+            echo
+            echo '```'
+            echo "npm stage list @stellar-code/hashira"
+            echo "npm stage view <stage-id>       # inspect the tarball first"
+            echo "npm stage approve <stage-id>    # or reject"
+            echo '```'
+            echo
+            echo "The Staged Packages tab on npmjs.com does the same thing."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --generate-notes
+        run: |
+          gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --generate-notes
+          # `gh release create` has no flag for prepending to generated notes, so the notice goes on
+          # afterwards. The tag is real either way; what is not yet true is that npm serves it.
+          notes="$(gh release view "${{ github.ref_name }}" --json body --jq .body)"
+          gh release edit "${{ github.ref_name }}" --notes \
+            "> Staged on npm and awaiting a maintainer's approval — not installable until then.
+
+          $notes"

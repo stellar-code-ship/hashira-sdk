@@ -99,6 +99,28 @@ before the previous package has been fully processed`, and a retry a few minutes
 treat an E409 straight after an unpublish as the registry still settling rather than as a day-long
 lockout, and retry before rearranging anything around it.
 
+### Staged, not published
+
+`release.yml` runs `npm stage publish`, which uploads the tarball to a queue rather than to the
+registry. Nobody can install the version until a maintainer approves it with 2FA:
+
+```
+npm stage list @stellar-code/hashira
+npm stage view <stage-id>      # inspect the tarball before approving
+npm stage approve <stage-id>   # or reject
+```
+
+The Staged Packages tab on npmjs.com does the same thing. The workflow's run summary prints these
+commands, because a green release run means "your turn" rather than "done".
+
+This is deliberately a different kind of control from the rest. The allowlist, the verifier, a
+repository with nothing secret in it and provenance all guard *what goes into* a tarball. None of
+them guard *the act of publishing*: pushing a tag releases on its own, so a compromised account, or
+a workflow change that lands in a merged pull request, would reach consumers with no person
+involved. Approval is the proof of presence that closes that, and it is why npm built the feature.
+
+It needs npm 11.15.0 or later, a higher floor than trusted publishing's 11.5.1.
+
 ### Authentication
 
 Releases authenticate through **trusted publishing**: the workflow presents a GitHub OIDC token and
