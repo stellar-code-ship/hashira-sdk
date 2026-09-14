@@ -1,0 +1,44 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Lint and format
+        run: bun run check
+
+      # Fetches Hashira's published contract and fails if the committed types no longer describe it.
+      # This is the only thing tying this repository to the API, and it is a plain HTTP read of a
+      # document anyone can fetch.
+      - name: The generated types match the API
+        run: bun run check-api-types
+
+      - name: Build
+        run: bun run build
+
+      - name: Test
+        run: bun run test
+
+      # The tarball is checked on every pull request, not only at release.
+      - name: The tarball contains only what it should
+        run: bun run verify-package

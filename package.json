@@ -1,0 +1,60 @@
+{
+	"name": "@stellar-code/hashira",
+	"version": "0.2.0",
+	"description": "TypeScript client for the Hashira API.",
+	"license": "MIT",
+	"author": "Stellar Code",
+	"homepage": "https://hashira.stellarcode.space",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/stellar-code-ship/hashira-sdk.git"
+	},
+	"bugs": "https://github.com/stellar-code-ship/hashira-sdk/issues",
+	"keywords": [
+		"hashira",
+		"api",
+		"client",
+		"sdk",
+		"email"
+	],
+	"type": "module",
+	"sideEffects": false,
+	"types": "./dist/hashira.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/hashira.d.ts",
+			"default": "./dist/hashira.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist",
+		"CHANGELOG.md"
+	],
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org",
+		"provenance": true
+	},
+	"engines": {
+		"node": ">=20"
+	},
+	"scripts": {
+		"build": "rm -rf dist && tsc -p tsconfig.build.json",
+		"typecheck": "tsc -p tsconfig.json",
+		"generate-api-types": "bun scripts/generate-api-types.ts",
+		"check-api-types": "bun scripts/generate-api-types.ts --check",
+		"test": "bun test --isolate tests",
+		"verify-package": "bun scripts/verify-package-contents.ts",
+		"assert-release-context": "bun scripts/assert-release-context.ts",
+		"prepublishOnly": "bun scripts/assert-release-context.ts",
+		"format": "biome format --write .",
+		"lint": "biome lint --write .",
+		"check": "biome check ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.5",
+		"bun-types": "^1.3.14",
+		"typescript": "^6.0.2"
+	}
+}

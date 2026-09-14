@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    name: Publish @stellar-code/hashira
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Trusted publishing: npm exchanges this OIDC token for a short-lived credential, and attests
+      # the build's provenance with it. No npm token exists in this repository's secrets.
+      id-token: write
+      # To attach the release notes.
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      # `registry-url` is needed — it is what puts `registry=https://registry.npmjs.org/` into the
+      # .npmrc, and npm will not start an OIDC exchange without knowing which registry to ask. But
+      # setup-node also writes `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into that same
+      # file and defines NODE_AUTH_TOKEN as a placeholder. npm reads the token line, concludes auth
+      # is configured, and never reaches OIDC at all. The publish step strips that one line; see
+      # npm/documentation#1960 and actions/setup-node#1551.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or later and Node 22.14 or later; the runner image ships
+      # npm 10.x, which fails with an authentication error rather than saying it is too old.
+      - name: Use an npm new enough for trusted publishing
+        run: |
+          npm install -g npm@latest
+          node --version
+          npm --version
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: The tag matches the manifest
+        run: bun run assert-release-context
+
+      - name: The generated types match the API
+        run: bun run check-api-types
+
+      - name: Build
+        run: bun run build
+
+      - name: Test
+        run: bun run test
+
+      - name: Verify the tarball
+        run: bun run verify-package
+
+      - name: Publish
+        run: |
+          # Strip the auth line setup-node wrote, which is what stands between npm and the OIDC
+          # exchange. With it gone npm finds no credential, notices ACTIONS_ID_TOKEN_REQUEST_*, and
+          # trades the workflow's OIDC token for a short-lived one.
+          npmrc="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+          sed -i "/_authToken/d" "$npmrc"
+
+          # Both guards exist because this failure is unhelpful twice over: it surfaces as `E404 ...
+          # or you do not have permission`, which reads like a missing package, and a real token
+          # here would publish successfully while proving nothing about trusted publishing.
+          if grep -q "_authToken" "$npmrc"; then
+            echo "An auth token is still configured in $npmrc; npm would use it instead of OIDC."
+            exit 1
+          fi
+
+          if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+            echo 'No OIDC token is available to this job. Is id-token: write still granted?'
+            exit 1
+          fi
+
+          # Published from the repository root, which is where package.json lives. There is no
+          # workspace above it, so npm has no root manifest to object to and this is npm's own
+          # documented shape for a trusted publish. `prepublishOnly` runs here and re-checks the tag.
+          npm publish --access public --provenance
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --generate-notes

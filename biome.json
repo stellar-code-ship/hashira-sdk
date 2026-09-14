@@ -1,0 +1,80 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.5/schema.json",
+	"root": true,
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"includes": ["**/src/**/*", "**/scripts/**/*", "**/tests/**/*"]
+	},
+	"overrides": [
+		{
+			"includes": ["**/src/**/*"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noNodejsModules": "error"
+					},
+					"style": {
+						"noProcessEnv": "error",
+						"noRestrictedGlobals": {
+							"level": "error",
+							"options": {
+								"deniedGlobals": {
+									"window": "The SDK must run outside a browser too.",
+									"document": "The SDK must run outside a browser too.",
+									"localStorage": "The SDK must not touch host storage.",
+									"__dirname": "The SDK is ESM-only.",
+									"require": "The SDK is ESM-only."
+								}
+							}
+						},
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["**/apps/**", "../../*", "../../../*"],
+										"message": "packages/sdk/src may not import outside itself. Anything it needs has to live in src/."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["**/src/generated/**"],
+			"linter": {
+				"enabled": false
+			}
+		}
+	],
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"lineWidth": 110
+	},
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		}
+	}
+}
