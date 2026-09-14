@@ -85,11 +85,19 @@ and is deleted afterwards. Provenance still applies to it: npm generates provena
 identity even when the publish authenticates with a token, so long as `id-token: write` is granted
 and the source repository is public.
 
-Two npm rules are worth knowing before reaching for `npm unpublish`, because both are permanent in
-practice. Unpublishing every version of a package blocks **any** publish of that name for 24 hours,
-from CI as much as from a laptop. And a version number is never reusable — `0.1.0` and `0.1.1` were
-published from the old monorepo and can never be published again, which is why this repository
-starts at `0.2.0`.
+Two things about `npm unpublish` are worth knowing, and they are not equally binding.
+
+A version number is never reusable, and that one is absolute: `0.1.0` and `0.1.1` were published
+from the old monorepo and can never be published again, which is why this repository starts at
+`0.2.0`.
+
+npm's policy also states that unpublishing every version of a package blocks any publish of that
+name for 24 hours. In practice that did not bite here — `0.2.0` published roughly ten minutes after
+the package was removed. What did happen is that the first attempt failed with
+`E409 Conflict — Failed to save packument. A common cause is if you try to publish a new package
+before the previous package has been fully processed`, and a retry a few minutes later succeeded. So
+treat an E409 straight after an unpublish as the registry still settling rather than as a day-long
+lockout, and retry before rearranging anything around it.
 
 ### Authentication
 
