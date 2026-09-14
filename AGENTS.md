@@ -77,6 +77,20 @@ bun run verify-package
 Then bump `version`, update `CHANGELOG.md`, commit, and push a `v<version>` tag. CI re-runs every
 check and publishes.
 
+### The first release
+
+npm's trusted publisher is configured on a package's own settings page, so the package has to exist
+before OIDC can be aimed at it. `bootstrap-release.yml` resolves that once, with a granular token,
+and is deleted afterwards. Provenance still applies to it: npm generates provenance from the OIDC
+identity even when the publish authenticates with a token, so long as `id-token: write` is granted
+and the source repository is public.
+
+Two npm rules are worth knowing before reaching for `npm unpublish`, because both are permanent in
+practice. Unpublishing every version of a package blocks **any** publish of that name for 24 hours,
+from CI as much as from a laptop. And a version number is never reusable — `0.1.0` and `0.1.1` were
+published from the old monorepo and can never be published again, which is why this repository
+starts at `0.2.0`.
+
 ### Authentication
 
 Releases authenticate through **trusted publishing**: the workflow presents a GitHub OIDC token and
