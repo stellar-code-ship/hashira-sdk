@@ -79,11 +79,15 @@ check and publishes.
 
 ### The first release
 
-npm's trusted publisher is configured on a package's own settings page, so the package has to exist
-before OIDC can be aimed at it. `bootstrap-release.yml` resolves that once, with a granular token,
-and is deleted afterwards. Provenance still applies to it: npm generates provenance from the OIDC
-identity even when the publish authenticates with a token, so long as `id-token: write` is granted
-and the source repository is public.
+npm's trusted publisher is configured on a package's own settings page, so a package has to exist
+before OIDC can be aimed at it. `0.2.0` was published for that reason with a granular token, through
+a one-shot workflow that has since been deleted along with the token. Anyone bringing a *new*
+package into this scope will meet the same chicken-and-egg and can recover that workflow from this
+repository's history.
+
+Provenance is not the thing to give up for it: npm generates provenance from the OIDC identity even
+when the publish itself authenticates with a token, so long as `id-token: write` is granted and the
+source repository is public. `0.2.0` is attested despite being the bootstrap.
 
 Two things about `npm unpublish` are worth knowing, and they are not equally binding.
 
