@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+# Refuses a commit made while standing on a protected branch.
+#
+# `main` takes changes through a pull request and nothing else, so the moment to say so is before the
+# commit exists rather than after it has been pushed. Branch first, commit there, open the request.
+#
+# It is a guard rail, not a wall: the flag that skips hooks walks straight past it, as does unsetting
+# `core.hooksPath`. The wall, where the plan allows one, is a GitHub ruleset on the branch.
+#
+# A detached HEAD is deliberately allowed. That is what a rebase runs under, and what the worktrees
+# under .claude/worktrees/ sit at; refusing there would break ordinary work to catch nothing, since a
+# detached commit still has to pass pre-push to reach anywhere.
+
+branch=$(git symbolic-ref --quiet --short HEAD) || exit 0
+
+case "$branch" in
+	main | master)
+		echo "pre-commit: this is $branch, and $branch only takes changes through a pull request." >&2
+		echo "            git switch -c feat/<name>   # commit there, push, and open the request" >&2
+		exit 1
+		;;
+esac
+
+exit 0

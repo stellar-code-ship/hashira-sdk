@@ -20,6 +20,39 @@ credential, not a schema that the API does not already expose. If something here
 that only the private repository has, that knowledge belongs in the API's published contract
 instead.
 
+## Branching
+
+`main` takes changes through a pull request and nothing else. Nothing is committed while standing on
+it, nothing is pushed to it, and nothing is force-pushed anywhere: branch, push the branch, open the
+request, and let the merge happen there.
+
+Unlike the private repositories in this organization, that is not a request here — it is enforced by
+a GitHub ruleset on the default branch, with no bypass actors, so it binds an administrator too.
+This repository is public, and on GitHub's Free plan rulesets are a public-repository feature; the
+private ones answer `403 Upgrade to GitHub Pro` and have to make do with the hooks alone. The
+argument in "Why this is its own repository" applies again, one level up: a guard that lives where
+the thing it guards lives can be weakened by the same change, and the ruleset is the one layer here
+that does not.
+
+The hooks are still worth having, because they refuse the mistake on this machine rather than after
+a round trip. `.githooks/pre-commit` and `.githooks/pre-merge-commit` refuse a commit made on
+`main`; `.githooks/pre-push` refuses a push whose destination is `main`, a deleted ref, or anything
+that would not fast-forward. They reach a clone through `core.hooksPath`, which `bun install` sets
+through the `prepare` script, and which a clone that has not been installed sets once by hand:
+
+```
+git config core.hooksPath .githooks
+```
+
+`prepare` does nothing when `CI` is set. That matters more here than anywhere else, because npm runs
+`prepare` during `npm stage publish` as well as on install, and a branch policy has no business in
+the release path.
+
+`ALLOW_FORCE=1` in front of a push waives the fast-forward check for the rebase-and-amend loop on a
+branch of your own. It does nothing for `main`, which the hook refuses earlier and the ruleset
+refuses regardless. Reach for it rather than for the flag that skips hooks, which would switch off
+every local guard at once — and would still not get past the server.
+
 ## The contract
 
 `src/generated/*.gen.ts` is emitted by `bun run generate-api-types` from Hashira's OpenAPI document,
@@ -74,8 +107,23 @@ bun run test
 bun run verify-package
 ```
 
-Then bump `version`, update `CHANGELOG.md`, commit, and push a `v<version>` tag. CI re-runs every
-check and publishes.
+Then bump `version` and update `CHANGELOG.md` — on a branch, through a pull request, because `main`
+is ruleset-protected and takes nothing directly. Once it is merged:
+
+```
+git switch main && git pull
+git tag v<version>          # the merged commit, not the branch tip
+git push origin v<version>
+```
+
+The tag must sit on the commit that is actually on `main`. `scripts/assert-release-context.ts`
+compares the tag against `package.json` at the tagged commit, so tagging a squashed branch's tip
+would publish a version no one can reach from `main`. For the same reason `git push --follow-tags`
+is no longer the way to do this: it pushes the branch and the tag together, and the branch half is
+refused twice over. Push the tag on its own.
+
+The ruleset targets branches, so it never sees `refs/tags/*` — pushing the tag is untouched by it,
+and CI re-runs every check and publishes from there.
 
 ### The first release
 

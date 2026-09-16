@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# The same rule as pre-commit, for the commit a merge creates.
+#
+# `pre-commit` does not run for a merge, so without this, merging a branch while standing on `main`
+# writes a merge commit there with nothing in the way. (Nor does it run for rebase, cherry-pick,
+# revert or am — those are caught at pre-push instead, since they rewrite work rather than introduce
+# it.)
+
+exec "$(dirname "$0")/pre-commit" "$@"

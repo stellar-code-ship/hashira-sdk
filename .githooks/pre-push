@@ -1,0 +1,79 @@
+#!/bin/sh
+#
+# Refuses the pushes that would put work on a protected branch, delete a ref, or rewrite history.
+#
+# $1 is the remote's name and $2 its URL. Every ref being pushed arrives on stdin as
+#   <local ref> <local oid> <remote ref> <remote oid>
+# and the destination that matters is the *remote* ref. That is why pushing HEAD to main under
+# another name is caught here and could not be caught by reading the command line.
+#
+# Git tells this hook nothing about how the push was spelled. There is no flag, no environment
+# variable and no push option, so the only available signal is whether the remote's current tip is an
+# ancestor of what is being sent — which means every variety of history rewrite looks alike here and
+# is treated alike.
+#
+# `ALLOW_FORCE=1` waives the fast-forward check on ordinary branches, for the rebase-and-amend loop.
+# It does not and cannot waive anything about `main`: that is refused before the check is reached.
+#
+# The flag that skips hooks skips this file entirely. That is git's design and cannot be closed here.
+
+set -u
+
+remote_name="${1:-origin}"
+status=0
+
+# 40 zeros under SHA-1, 64 under SHA-256. Deriving it matters: a hard-coded literal silently stops
+# matching in a SHA-256 repository, and a deletion check that stops matching fails open.
+zero=$(git hash-object --stdin </dev/null | tr '0-9a-f' '0')
+shallow=$(git rev-parse --is-shallow-repository 2>/dev/null || echo false)
+
+refuse() {
+	printf 'pre-push: %s\n' "$*" >&2
+	status=1
+}
+
+# Every ref is judged and the verdict given at the end. Pushing every branch at once sends one line
+# per branch, and stopping at the first refusal would hide the rest.
+while read -r local_ref local_oid remote_ref remote_oid; do
+	[ -n "${remote_ref:-}" ] || continue
+
+	if [ "$local_oid" = "$zero" ]; then
+		refuse "refusing to delete $remote_ref on $remote_name."
+		continue
+	fi
+
+	case "$remote_ref" in
+		refs/heads/main | refs/heads/master)
+			refuse "$remote_ref is protected and only takes changes through a pull request."
+			refuse "          git push -u $remote_name HEAD   # then: gh pr create"
+			continue
+			;;
+		refs/tags/*)
+			# A new tag is the release path and must pass. Moving one that already exists rewrites
+			# something other clones have already seen.
+			[ "$remote_oid" = "$zero" ] ||
+				refuse "$remote_ref already exists on $remote_name; a tag is re-cut, not moved."
+			continue
+			;;
+		refs/heads/*) ;;
+		*) continue ;;
+	esac
+
+	[ "$remote_oid" = "$zero" ] && continue   # a brand-new branch has no history to rewrite
+	[ "$shallow" = true ] && continue         # a truncated history cannot answer the question
+	[ "${ALLOW_FORCE:-}" = 1 ] && continue
+
+	# --is-ancestor exits 0 for a fast-forward, 1 for a rewrite and 128 for an error, so a plain
+	# negation would report a missing object as a rewrite. Check the object is here first, and say
+	# which of the two actually happened.
+	if git cat-file -e "${remote_oid}^{commit}" 2>/dev/null; then
+		git merge-base --is-ancestor "$remote_oid" "$local_oid" && continue
+		refuse "$remote_ref would not fast-forward — this rewrites history already on $remote_name."
+		refuse "          ALLOW_FORCE=1 git push ...   # if the rewrite is deliberate"
+	else
+		refuse "the tip of $remote_ref on $remote_name ($remote_oid) is not in this clone."
+		refuse "          git fetch $remote_name   # so a fast-forward can be told from a rewrite"
+	fi
+done
+
+exit $status
