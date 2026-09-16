@@ -85,6 +85,13 @@ jobs:
           # Staged, not published. `npm stage publish` uploads the tarball to a queue where it sits
           # until a maintainer approves it with 2FA; until then nobody can install it.
           #
+          # `--tag latest` is passed explicitly even though `latest` is already npm's default,
+          # because the default demonstrably did not survive the staged path: 0.3.0 was approved and
+          # published carrying no dist-tag at all, leaving `npm install` resolving to 0.2.1. Stating
+          # it is the only lever this workflow has. It is not a guarantee — whether a staged tag is
+          # applied at approval is npm's to decide, and this job is long over by then — so the run
+          # summary below asks for the tag to be checked rather than assuming it moved.
+          #
           # Everything else here guards what goes *into* a tarball — the allowlist, the verifier, a
           # repository with nothing secret in it, provenance. None of that guards the act of
           # publishing. Pushing a tag releases on its own, so a compromised account or a workflow
@@ -93,7 +100,7 @@ jobs:
           #
           # Run from the repository root, where package.json is. There is no workspace above it, so
           # npm has no root manifest to object to. `prepublishOnly` runs here and re-checks the tag.
-          npm stage publish --access public --provenance
+          npm stage publish --access public --provenance --tag latest
 
       # The tag is real and the code is released; the npm version is not live yet. Saying so here
       # is the difference between a green run meaning "done" and meaning "your turn".
@@ -112,6 +119,17 @@ jobs:
             echo '```'
             echo
             echo "The Staged Packages tab on npmjs.com does the same thing."
+            echo
+            echo "#### Then check that \`latest\` moved"
+            echo
+            echo "Approving publishes the version; it does not reliably tag it. 0.3.0 landed with no"
+            echo "dist-tag at all, so \`npm install\` went on resolving to the version before it."
+            echo "This run asked for \`--tag latest\`, but only the registry can settle it:"
+            echo
+            echo '```'
+            echo "npm dist-tag ls @stellar-code/hashira"
+            echo "npm dist-tag add @stellar-code/hashira@$version latest   # if it did not move"
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create the GitHub release

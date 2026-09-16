@@ -125,6 +125,21 @@ involved. Approval is the proof of presence that closes that, and it is why npm 
 
 It needs npm 11.15.0 or later, a higher floor than trusted publishing's 11.5.1.
 
+Approving publishes the version. It does not reliably tag it: `0.3.0` was approved and landed on the
+registry carrying no dist-tag at all, so `npm install @stellar-code/hashira` went on resolving to
+`0.2.1` as though nothing had been released. `latest` was already npm's default for a publish, which
+is why the workflow had not said so — the default does not survive the staged path.
+
+`release.yml` now passes `--tag latest` explicitly, but that is a request rather than a guarantee:
+whether a staged tag is applied belongs to the approval, which happens long after the job has ended.
+So the run summary ends by asking for the tag to be checked, and a release is only finished once it
+has been:
+
+```
+npm dist-tag ls @stellar-code/hashira
+npm dist-tag add @stellar-code/hashira@<version> latest
+```
+
 ### Authentication
 
 Releases authenticate through **trusted publishing**: the workflow presents a GitHub OIDC token and
