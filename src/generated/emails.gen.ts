@@ -37,14 +37,6 @@ export type Email = {
 	 */
 	scheduledAt: string | null;
 	/**
-	 * When the message was moved to the trash. Null while it is live. A message in the trash is left out of `GET /emails` unless you ask for it with `deleted=true`, but stays readable by id and can be brought back with `POST /emails/{emailId}/restore`.
-	 */
-	deletedAt: string | null;
-	/**
-	 * When the message will be destroyed for good, along with its stored body and every attachment. Null while it is live. Deleting it again with `force=true` destroys it before this instant.
-	 */
-	purgeAt: string | null;
-	/**
 	 * The provider's spam verdict for received mail. `FAIL` means it was judged spam. Null on mail you sent and whenever the check did not run — null is never a pass.
 	 */
 	spamVerdict: "PASS" | "FAIL" | "GRAY" | "PROCESSING_FAILED" | null;
@@ -67,24 +59,8 @@ export type Email = {
 	createdAt: string;
 };
 
-export type BulkEmailFailure = {
+export type EmailReference = {
 	id: string;
-	/**
-	 * Why this message was skipped: EMAIL_NOT_FOUND, EMAIL_NOT_SCHEDULED_FOR_DELETION or EMAIL_NOT_DELETED.
-	 */
-	error: string;
-};
-
-export type EmailDeletion = {
-	id: string;
-	/**
-	 * True when the message no longer exists. False when it is in the trash and still restorable until `purgeAt`.
-	 */
-	deleted: boolean;
-	/**
-	 * When the message will be destroyed. Null once it already has been.
-	 */
-	purgeAt: string | null;
 };
 
 /**
@@ -94,10 +70,6 @@ export type ListEmailsQuery = {
 	direction?: "SENT" | "RECEIVED";
 	status?: "QUEUED" | "SENT" | "FAILED" | "RECEIVED";
 	q?: string;
-	/**
-	 * Set to `true` to list the messages in the trash instead of the live ones.
-	 */
-	deleted?: string;
 	limit?: number;
 	cursor?: string;
 };
@@ -142,37 +114,7 @@ export type SendEmailBody = {
 /**
  * Send an email. The id of the accepted message.
  */
-export type SendEmailResponse = {
-	id: string;
-};
-
-/**
- * The body of `PATCH /emails`.
- */
-export type RestoreEmailsBody = {
-	/**
-	 * The messages to restore. Each one is answered for on its own.
-	 */
-	emailIds: string[];
-};
-
-/**
- * Restore deleted emails. The restored messages, and which ones were skipped.
- */
-export type RestoreEmailsResponse = {
-	results: Email[];
-	errors: BulkEmailFailure[];
-};
-
-/**
- * The query of `DELETE /emails`.
- */
-export type DeleteEmailsQuery = {
-	/**
-	 * Destroy the message now instead of waiting out its window. Only accepted while it is already in the trash.
-	 */
-	force?: string;
-};
+export type SendEmailResponse = EmailReference;
 
 /**
  * The body of `DELETE /emails`.
@@ -185,32 +127,23 @@ export type DeleteEmailsBody = {
 };
 
 /**
- * Delete emails. What happened to each message, and which ones were skipped.
+ * Delete emails. What was destroyed, and which ones were skipped.
  */
 export type DeleteEmailsResponse = {
-	results: EmailDeletion[];
-	errors: BulkEmailFailure[];
+	results: EmailReference[];
+	errors: Array<{
+		id: string;
+		/**
+		 * Why this message was skipped. Currently only EMAIL_NOT_FOUND.
+		 */
+		error: string;
+	}>;
 };
 
 /**
  * Retrieve an email. The email.
  */
 export type GetEmailResponse = Email;
-
-/**
- * The query of `DELETE /emails/{emailId}`.
- */
-export type DeleteEmailQuery = {
-	/**
-	 * Destroy the message now instead of waiting out its window. Only accepted while it is already in the trash.
-	 */
-	force?: string;
-};
-
-/**
- * Delete an email. What happened to the message, and when it will be destroyed.
- */
-export type DeleteEmailResponse = EmailDeletion;
 
 /**
  * Retrieve an email's content. The email's body and the metadata of its attachments.
@@ -238,8 +171,3 @@ export type CreateEmailAttachmentLinkResponse = {
 	url: string;
 	expiresAt: string;
 };
-
-/**
- * Restore a deleted email. The message, no longer in the trash.
- */
-export type RestoreEmailResponse = Email;

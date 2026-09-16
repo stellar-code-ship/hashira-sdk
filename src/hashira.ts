@@ -36,25 +36,17 @@ export class Hashira {
 }
 
 export type {
-	BulkEmailFailure,
 	CreateEmailAttachmentLinkResponse,
-	DeleteEmailResponse,
 	DeleteEmailsResponse,
 	Email,
-	EmailDeletion,
+	EmailReference,
 	GetEmailContentResponse,
 	GetEmailResponse,
 	ListEmailsResponse,
-	RestoreEmailResponse,
-	RestoreEmailsResponse,
 	SendEmailResponse,
 } from "./generated/emails.gen.js";
 export type { HashiraErrorCode } from "./generated/error-codes.gen.js";
 export type { HashiraErrorFields, HashiraErrorOptions } from "./hashira-error.js";
 export { HashiraError } from "./hashira-error.js";
 export type { FetchLike, HashiraOptions } from "./http-client.js";
-export type {
-	DeleteEmailInput,
-	ListEmailsInput,
-	SendEmailInput,
-} from "./resources/emails-resource.js";
+export type { ListEmailsInput, SendEmailInput } from "./resources/emails-resource.js";

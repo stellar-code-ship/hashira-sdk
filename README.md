@@ -48,15 +48,14 @@ The outcome arrives as an `EMAIL_SENT` or `EMAIL_FAILED` webhook, or by reading 
 | `emails.list(query?)` | Lists messages, newest first. |
 | `emails.get(id)` | One message's metadata. |
 | `emails.getContent(id)` | Its body and its attachments' metadata. |
-| `emails.delete(id, { force? })` | Moves it to the trash, or destroys it. |
-| `emails.restore(id)` | Takes it back out of the trash. |
-| `emails.deleteMany(ids, { force? })` | Up to 200 at once, answered per item. |
-| `emails.restoreMany(ids)` | Up to 200 at once, answered per item. |
+| `emails.deleteMany(ids)` | Destroys up to 200 at once, answered per item. |
 | `emails.downloadAttachment(id, attachmentId)` | The raw `Response`, so you choose how to read it. |
 | `emails.createAttachmentLink(id, attachmentId)` | A signed link that needs no API key. |
 
-Deleting never destroys on the first call: the message goes to a trash it stays restorable from
-until `purgeAt`. `force` is accepted only on a message already in there.
+Deleting destroys, immediately and for good, with the stored body and every attachment. There is no
+trash, no restore and no single-message form — delete one by sending a set of one. Any window
+between deciding and destroying is yours to keep: how long a message should survive is a question
+about the mailboxes holding it, which the API cannot see.
 
 ### Paging
 

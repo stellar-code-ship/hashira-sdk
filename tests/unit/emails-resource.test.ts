@@ -76,59 +76,46 @@ describe("EmailsResource", () => {
 		expect("scheduledAt" in bodyOf(calls[0])).toBe(false);
 	});
 
-	it("asks for the trash with a string, since the flag travels in the query", async () => {
+	it("passes a list query straight through", async () => {
 		const { emails, calls } = emailsResource({ data: [], nextCursor: null });
 
-		await emails.list({ deleted: true, limit: 50 });
+		await emails.list({ direction: "SENT", limit: 50 });
 
 		const url = new URL(calls[0]?.url ?? "");
 
-		expect(url.searchParams.get("deleted")).toBe("true");
+		expect(url.searchParams.get("direction")).toBe("SENT");
 		expect(url.searchParams.get("limit")).toBe("50");
 	});
 
-	it("reads and restores one message by id", async () => {
+	it("reads one message by id", async () => {
 		const { emails, calls } = emailsResource({ id: "abc" });
 
 		await emails.get("abc");
 		await emails.getContent("abc");
-		await emails.restore("abc");
 
 		expect(calls[0]?.url).toBe("https://example.test/api/v1/emails/abc");
 		expect(calls[1]?.url).toBe("https://example.test/api/v1/emails/abc/content");
-		expect(calls[2]?.url).toBe("https://example.test/api/v1/emails/abc/restore");
-		expect(calls[2]?.init?.method).toBe("POST");
 	});
 
-	it("sends force in the query on a single delete", async () => {
-		const { emails, calls } = emailsResource({ id: "abc", deleted: true, purgeAt: null });
-
-		await emails.delete("abc", { force: true });
-
-		expect(new URL(calls[0]?.url ?? "").searchParams.get("force")).toBe("true");
-		expect(calls[0]?.init?.method).toBe("DELETE");
-	});
-
-	it("names the messages in the body of a bulk delete and keeps force in the query", async () => {
+	it("names the messages in the body of a delete", async () => {
 		// The collection has no id in its path, and a query string is not somewhere two hundred ids
 		// can go — so this is the one DELETE in the API that carries a body.
 		const { emails, calls } = emailsResource({ results: [], errors: [] });
 
-		await emails.deleteMany(["a", "b"], { force: true });
-
-		expect(calls[0]?.init?.method).toBe("DELETE");
-		expect(bodyOf(calls[0])).toEqual({ emailIds: ["a", "b"] });
-		expect(new URL(calls[0]?.url ?? "").searchParams.get("force")).toBe("true");
-	});
-
-	it("restores a set with PATCH on the collection", async () => {
-		const { emails, calls } = emailsResource({ results: [], errors: [] });
-
-		await emails.restoreMany(["a", "b"]);
+		await emails.deleteMany(["a", "b"]);
 
 		expect(calls[0]?.url).toBe("https://example.test/api/v1/emails");
-		expect(calls[0]?.init?.method).toBe("PATCH");
+		expect(calls[0]?.init?.method).toBe("DELETE");
 		expect(bodyOf(calls[0])).toEqual({ emailIds: ["a", "b"] });
+	});
+
+	it("deletes one message as a set of one, since there is no single-message form", async () => {
+		const { emails, calls } = emailsResource({ results: [{ id: "abc" }], errors: [] });
+
+		await emails.deleteMany(["abc"]);
+
+		expect(calls[0]?.url).toBe("https://example.test/api/v1/emails");
+		expect(bodyOf(calls[0])).toEqual({ emailIds: ["abc"] });
 	});
 
 	it("hands back the raw response for an attachment instead of buffering it", async () => {

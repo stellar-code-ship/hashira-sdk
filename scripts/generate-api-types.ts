@@ -29,10 +29,11 @@ const shippedTags = ["Emails"] as const;
  * type. An unnamed repeated shape fails the run rather than being inlined twice.
  */
 const sharedShapeNames: Record<string, string> = {
-	"attachmentCount,bccAddresses,ccAddresses,createdAt,deletedAt,deliveredToAddresses,direction,dkimVerdict,dmarcVerdict,fromAddress,id,inReplyTo,messageId,preview,purgeAt,references,replyToAddresses,scheduledAt,spamVerdict,spfVerdict,status,subject,toAddresses,virusVerdict":
+	"attachmentCount,bccAddresses,ccAddresses,createdAt,deliveredToAddresses,direction,dkimVerdict,dmarcVerdict,fromAddress,id,inReplyTo,messageId,preview,references,replyToAddresses,scheduledAt,spamVerdict,spfVerdict,status,subject,toAddresses,virusVerdict":
 		"Email",
-	"error,id": "BulkEmailFailure",
-	"deleted,id,purgeAt": "EmailDeletion",
+	// A message named by nothing but its id. Sending answers with one, and so does each entry in a
+	// delete's results: with no trash left there is no state to report and no date to report it for.
+	id: "EmailReference",
 };
 
 type JsonSchema = Record<string, unknown>;

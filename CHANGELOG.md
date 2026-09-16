@@ -9,6 +9,40 @@ Hashira API version**: `1.x` speaks `/api/v1`, and a future `/api/v2` would be `
 
 ## [Unreleased]
 
+## [0.3.0]
+
+Deleting a message now destroys it. The seven-day trash this client could put a message into, and
+take it back out of, is gone from the API — that window belongs to whoever holds the mailboxes
+indexing a message, because one message at Hashira can be indexed by several of them at once and how
+long it should survive is a question the API cannot answer.
+
+### Removed
+
+- **`emails.delete(id, input?)`, `emails.restore(id)` and `emails.restoreMany(ids)`.** The endpoints
+  behind them (`DELETE /emails/{emailId}`, `POST /emails/{emailId}/restore` and `PATCH /emails`) no
+  longer exist. Delete a single message with `emails.deleteMany([id])`.
+- **`DeleteEmailInput` and its `force` flag.** There is no second state for a message to be in, so
+  there is nothing to force.
+- **`deleted` on `emails.list()`.** There is no trash to list.
+- **`deletedAt` and `purgeAt` on `Email`.**
+- **The `DeleteEmailResponse`, `RestoreEmailResponse`, `RestoreEmailsResponse`, `EmailDeletion` and
+  `BulkEmailFailure` types.** The first four described operations that are gone; the last described a
+  shape that now appears once and is inlined where it is used.
+- **The `EMAIL_NOT_DELETED` and `EMAIL_NOT_SCHEDULED_FOR_DELETION` error codes.** Nothing answers
+  with them any more.
+
+### Changed
+
+- **`emails.deleteMany(ids)` destroys.** It takes no options, and each entry in `results` carries
+  only an `id`: with no trash there is no state to report and no date to report it for. It still
+  answers per item, and repeating a call is harmless — what is already gone comes back as
+  `EMAIL_NOT_FOUND`.
+
+### Added
+
+- **`EmailReference`,** the `{ id }` shape both `send()` and each entry of a delete's `results`
+  answer with.
+
 ## [0.2.0]
 
 The client moved to its own public repository,

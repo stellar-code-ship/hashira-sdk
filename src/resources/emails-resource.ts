@@ -1,13 +1,10 @@
 import type {
 	CreateEmailAttachmentLinkResponse,
-	DeleteEmailResponse,
 	DeleteEmailsResponse,
 	GetEmailContentResponse,
 	GetEmailResponse,
 	ListEmailsQuery,
 	ListEmailsResponse,
-	RestoreEmailResponse,
-	RestoreEmailsResponse,
 	SendEmailBody,
 	SendEmailResponse,
 } from "../generated/emails.gen.js";
@@ -25,24 +22,8 @@ export type SendEmailInput = Omit<SendEmailBody, "scheduledAt"> & {
 	scheduledAt?: Date | string;
 };
 
-/**
- * What `list()` accepts.
- *
- * `deleted` is a real boolean here. On the wire it is a string, because it is a query parameter;
- * translating that is the SDK's job, not the caller's.
- */
-export type ListEmailsInput = Omit<ListEmailsQuery, "deleted"> & {
-	/** List the messages in the trash instead of the live ones. */
-	deleted?: boolean;
-};
-
-export type DeleteEmailInput = {
-	/**
-	 * Destroy the message now instead of waiting out its window. Accepted only on a message already
-	 * in the trash, so nothing is ever destroyed by a single call.
-	 */
-	force?: boolean;
-};
+/** What `list()` accepts. */
+export type ListEmailsInput = ListEmailsQuery;
 
 function toIsoString(value: Date | string): string {
 	return value instanceof Date ? value.toISOString() : value;
@@ -54,7 +35,8 @@ function toIsoString(value: Date | string): string {
  * A message is composed and sent in one call and is immutable from then on. Sending is accepted
  * asynchronously — a resolved `send()` means the message was queued, not delivered; the outcome
  * arrives as an `EMAIL_SENT` or `EMAIL_FAILED` webhook, or by reading the message back with
- * `get()`.
+ * `get()`. Deleting is the other end of that: `deleteMany()` destroys, and nothing here puts a
+ * message back.
  */
 export class EmailsResource {
 	readonly #client: HttpClient;
@@ -82,7 +64,7 @@ export class EmailsResource {
 		return this.#client.request({ method: "GET", path: "/emails", query: { ...query } });
 	}
 
-	/** Reads one message's metadata. A message in the trash is still readable by id. */
+	/** Reads one message's metadata. */
 	get(emailId: string): Promise<GetEmailResponse> {
 		return this.#client.request({ method: "GET", path: `/emails/${encodeURIComponent(emailId)}` });
 	}
@@ -99,42 +81,24 @@ export class EmailsResource {
 	}
 
 	/**
-	 * Moves a message to the trash, where it stays restorable until `purgeAt`.
+	 * Destroys up to 200 messages, with their stored bodies and every attachment.
 	 *
-	 * Pass `force` to destroy it now instead — accepted only on a message already in the trash.
-	 */
-	delete(emailId: string, input: DeleteEmailInput = {}): Promise<DeleteEmailResponse> {
-		return this.#client.request({
-			method: "DELETE",
-			path: `/emails/${encodeURIComponent(emailId)}`,
-			query: { ...input },
-		});
-	}
-
-	/** Takes a message back out of the trash. */
-	restore(emailId: string): Promise<RestoreEmailResponse> {
-		return this.#client.request({ method: "POST", path: `/emails/${encodeURIComponent(emailId)}/restore` });
-	}
-
-	/**
-	 * Deletes up to 200 messages in one call.
+	 * The only deletion this API has, and there is no undoing it: no trash, no restore, and no
+	 * single-message form — a set is how it answers, and a caller wanting to delete one sends a set
+	 * of one. Any window between deciding and destroying is yours to keep, because how long a message
+	 * should survive is a question about the mailboxes holding it, which the API cannot see.
 	 *
-	 * Unlike every other operation this answers per item rather than all-or-nothing: what it could
-	 * act on comes back in `results`, and what it could not in `errors`, under a single success. One
-	 * unknown id never refuses the rest.
+	 * Unlike every other operation this answers per item rather than all-or-nothing: what it
+	 * destroyed comes back in `results`, and what it could not act on in `errors`, under a single
+	 * success. One unknown id never refuses the rest, and repeating a call is harmless — what is
+	 * already gone comes back as `EMAIL_NOT_FOUND`.
 	 */
-	deleteMany(emailIds: string[], input: DeleteEmailInput = {}): Promise<DeleteEmailsResponse> {
+	deleteMany(emailIds: string[]): Promise<DeleteEmailsResponse> {
 		return this.#client.request({
 			method: "DELETE",
 			path: "/emails",
-			query: { ...input },
 			body: { emailIds },
 		});
-	}
-
-	/** Restores up to 200 messages in one call, answering per item the same way `deleteMany` does. */
-	restoreMany(emailIds: string[]): Promise<RestoreEmailsResponse> {
-		return this.#client.request({ method: "PATCH", path: "/emails", body: { emailIds } });
 	}
 
 	/**
