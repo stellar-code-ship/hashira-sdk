@@ -43,6 +43,19 @@ long it should survive is a question the API cannot answer.
 - **`EmailReference`,** the `{ id }` shape both `send()` and each entry of a delete's `results`
   answer with.
 
+## [0.2.1]
+
+Nothing in the client changed. This release exists to exercise the publishing path itself, which now
+stages a tarball for approval rather than sending it straight to the registry — a change to how a
+release reaches anyone at all, and one that can only be proven by releasing.
+
+### Changed
+
+- **Publishing is gated on a person.** `release.yml` runs `npm stage publish`, which uploads to a
+  queue nobody can install from until a maintainer approves it with 2FA, so a green release run now
+  means "your turn" rather than "done". Every other guard around a release covers what goes into the
+  tarball; this is the first one covering the act of publishing it.
+
 ## [0.2.0]
 
 The client moved to its own public repository,
