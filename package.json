@@ -50,7 +50,8 @@
 		"prepublishOnly": "bun scripts/assert-release-context.ts",
 		"format": "biome format --write .",
 		"lint": "biome lint --write .",
-		"check": "biome check ."
+		"check": "biome check .",
+		"prepare": "[ -z \"$CI\" ] && git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.5",
