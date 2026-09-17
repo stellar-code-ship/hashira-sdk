@@ -26,9 +26,9 @@ The API key decides everything about scope: which project the message is sent fr
 is live or test data. Nothing in a request says which mode it is in, so switching between them means
 switching keys.
 
-Sending is the whole of this client, because sending is the whole of the published API. A message
-may only be sent from a domain registered to your project; anything else answers
-`FROM_DOMAIN_NOT_REGISTERED`.
+Sending and reading one message back are the whole of this client, because they are the whole of the
+published API. A message may only be sent from a domain registered to your project; anything else
+answers `FROM_DOMAIN_NOT_REGISTERED`.
 
 ### Options
 
@@ -46,9 +46,22 @@ const hashira = new Hashira(apiKey, {
 | Call | What it does |
 | --- | --- |
 | `emails.send(input)` | Sends a message. Address fields take a string or an array. |
+| `emails.get(id)` | One message's current state. Metadata only. |
 
 Sending is accepted asynchronously: a resolved `send()` means the message was queued, not delivered.
-The outcome arrives as an `EMAIL_SENT` or `EMAIL_FAILED` webhook.
+The outcome arrives as an `EMAIL_SENT` or `EMAIL_FAILED` webhook, which carries the message's id and
+nothing else — `get()` is how that id becomes an answer.
+
+```ts
+const email = await hashira.emails.get(id);
+
+if (email.status === "FAILED") {
+	// ...
+}
+```
+
+`get()` never reads the stored message, so calling it once per webhook is cheap. The body and the
+attachments are not part of the published API.
 
 Attachments ride inline as base64 in `attachments`, so the size ceiling applies to the whole request
 rather than to any one part. `scheduledAt` takes a `Date` or an ISO-8601 string; omit it to send

@@ -10,10 +10,10 @@ All notable changes to `@stellar-code/hashira` are documented here. The format f
 
 ## [1.0.0]
 
-Hashira's published API is one endpoint now, so this client is one method. Everything else it used
-to call still exists and still takes the same keys — it moved to `/internal/v1`, which is documented
-behind a dashboard session rather than published, and is therefore not something this package can
-promise. Sending is what is sold, and sending is what is here.
+Hashira's published API is two endpoints now — send a message, read one back — so this client is two
+methods. Everything else it used to call still exists and still takes the same keys, but it moved to
+`/internal/v1`, which is documented behind a dashboard session rather than published, and is
+therefore not something this package can promise.
 
 The host and the prefix changed in the same release, because the API stopped sharing a hostname with
 the dashboard and the reference site.
@@ -26,17 +26,26 @@ the dashboard and the reference site.
 
 ### Removed
 
-- **`emails.list()`, `emails.get()`, `emails.getContent()`, `emails.deleteMany()`,
-  `emails.downloadAttachment()` and `emails.createAttachmentLink()`.** The endpoints behind them are
-  alive and unchanged at `/internal/v1/emails`; call that prefix directly with the same key if you
-  need them.
-- **`ListEmailsInput`, `ListEmailsResponse`, `GetEmailResponse`, `GetEmailContentResponse`,
-  `DeleteEmailsResponse`, `CreateEmailAttachmentLinkResponse`, `Email` and `EmailReference`.** They
-  described operations that are no longer published.
-- **The error codes those operations answered with.** `HashiraErrorCode` now lists only what
-  `POST /v1/emails` can answer: `FROM_DOMAIN_NOT_REGISTERED`, `INVALID_API_KEY`, `INVALID_JSON_BODY`,
-  `MISSING_API_KEY`, `PAYLOAD_TOO_LARGE` and `VALIDATION_ERROR`. The union still widens with
-  `(string & {})`, so switching on a newer code keeps compiling.
+- **`emails.list()`, `emails.getContent()`, `emails.deleteMany()`, `emails.downloadAttachment()` and
+  `emails.createAttachmentLink()`.** The endpoints behind them are alive and unchanged at
+  `/internal/v1/emails`; call that prefix directly with the same key if you need them.
+- **`ListEmailsInput`, `ListEmailsResponse`, `GetEmailContentResponse`, `DeleteEmailsResponse`,
+  `CreateEmailAttachmentLinkResponse`, `Email` and `EmailReference`.** They described operations that
+  are no longer published. `emails.get()` stays and now answers `GetEmailResponse`, which carries the
+  fields `Email` used to.
+- **The error codes the removed operations answered with.** `HashiraErrorCode` now lists only what
+  `POST /v1/emails` and `GET /v1/emails/{emailId}` can answer: `EMAIL_NOT_FOUND`,
+  `FROM_DOMAIN_NOT_REGISTERED`, `INVALID_API_KEY`, `INVALID_JSON_BODY`, `MISSING_API_KEY`,
+  `PAYLOAD_TOO_LARGE` and `VALIDATION_ERROR`. The union still widens with `(string & {})`, so
+  switching on a newer code keeps compiling.
+
+### Fixed
+
+- **Nullable fields are typed rather than `unknown`.** The document renders a nullable as OpenAPI
+  3.1's `type: ["string", "null"]`, which the generator only read as a scalar — so every nullable
+  field on a message came out `unknown`, and a nullable enum lost its null entirely. It now renders
+  each member of a type list against the same sibling keywords, ahead of `enum` so a nullable enum
+  keeps both halves.
 
 ## [0.3.0]
 

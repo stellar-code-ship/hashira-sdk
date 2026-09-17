@@ -87,6 +87,20 @@ function renderSchema(schema: JsonSchema, indent: string, hoisted: Map<string, s
 		return renderLiteral(schema.const);
 	}
 
+	// OpenAPI 3.1 lets `type` be a list, and this document uses it for every nullable field:
+	// Elysia renders `z.string().nullable()` as `type: ["string", "null"]` rather than as an
+	// `anyOf`. Each member is rendered against the same sibling keywords — `items`, `properties`,
+	// `enum` — because those describe the non-null member and would otherwise be dropped along with
+	// it. Handled ahead of `enum` for exactly that reason: a nullable enum carries its four literals
+	// in `enum` and its null in `type`, so matching `enum` first would silently lose the null.
+	if (Array.isArray(schema.type)) {
+		const members = schema.type.map((member) =>
+			member === "null" ? "null" : renderSchema({ ...schema, type: member }, indent, hoisted),
+		);
+
+		return [...new Set(members)].join(" | ");
+	}
+
 	if (Array.isArray(schema.enum)) {
 		return schema.enum.map(renderLiteral).join(" | ");
 	}

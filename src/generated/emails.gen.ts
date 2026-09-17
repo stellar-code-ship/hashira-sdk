@@ -36,3 +36,72 @@ export type SendEmailBody = {
 export type SendEmailResponse = {
 	id: string;
 };
+
+/**
+ * Retrieve an email. The email.
+ */
+export type GetEmailResponse = {
+	id: string;
+	direction: "SENT" | "RECEIVED";
+	status: "QUEUED" | "SENT" | "FAILED" | "RECEIVED";
+	fromAddress: string;
+	toAddresses: string[];
+	/**
+	 * On received mail, the addresses at your domains this copy was actually delivered to. Route on this rather than on `toAddresses`: a BCC'd or forwarded message carries a `To:` header that never names the address it arrived at, so routing on the header alone silently drops it. Null on mail you sent.
+	 */
+	deliveredToAddresses: string[] | null;
+	ccAddresses: string[] | null;
+	bccAddresses: string[] | null;
+	replyToAddresses: string[] | null;
+	subject: string;
+	/**
+	 * A short plain-text snippet of the message, enough to render an inbox row.
+	 */
+	preview: string | null;
+	/**
+	 * The RFC 5322 Message-ID of received mail. Null on mail you sent: the provider assigns the outgoing message its own Message-ID, so no value recorded here would be the one recipients see.
+	 */
+	messageId: string | null;
+	/**
+	 * The message this one replies to, as it appears in the `In-Reply-To` header.
+	 */
+	inReplyTo: string | null;
+	/**
+	 * The `References` chain. Reply to a received message by sending its `messageId` as `inReplyTo` and its `references` plus that same id as `references`. On a message you sent, this ends with `<{id}@{your-domain}>` — the entry Hashira appends so a reply can be traced back to it.
+	 */
+	references: string[] | null;
+	/**
+	 * The conversation this message belongs to: the root `Message-ID` of its reference chain. Every message of one thread carries the same value, derived from its own headers, so you can group by it without matching chains yourself — and without the order messages reach you mattering. Null when the message names nothing and carries no `Message-ID`, which is a conversation of one.
+	 */
+	conversationId: string | null;
+	/**
+	 * How many bytes the stored message occupies. Recorded when the message is stored, so reading it costs nothing — use this instead of fetching `/content` to measure a mailbox. Null on messages stored before this was recorded, and on ones with no stored object.
+	 */
+	sizeBytes: number | null;
+	attachmentCount: number;
+	/**
+	 * When a queued message is due to be handed to the provider. Null on a message that went out immediately, and on received mail.
+	 */
+	scheduledAt: string | null;
+	/**
+	 * The provider's spam verdict for received mail. `FAIL` means it was judged spam. Null on mail you sent and whenever the check did not run — null is never a pass.
+	 */
+	spamVerdict: "PASS" | "FAIL" | "GRAY" | "PROCESSING_FAILED" | null;
+	/**
+	 * The provider's virus verdict for received mail. `FAIL` means malware was found in the message. Null on mail you sent and whenever the check did not run — null is never a pass.
+	 */
+	virusVerdict: "PASS" | "FAIL" | "GRAY" | "PROCESSING_FAILED" | null;
+	/**
+	 * The SPF result for received mail. Null on mail you sent and when it was not checked.
+	 */
+	spfVerdict: "PASS" | "FAIL" | "GRAY" | "PROCESSING_FAILED" | null;
+	/**
+	 * The DKIM result for received mail. Null on mail you sent and when it was not checked.
+	 */
+	dkimVerdict: "PASS" | "FAIL" | "GRAY" | "PROCESSING_FAILED" | null;
+	/**
+	 * The DMARC result for received mail. Null on mail you sent, and also whenever the sender's domain publishes no DMARC policy to evaluate.
+	 */
+	dmarcVerdict: "PASS" | "FAIL" | "GRAY" | "PROCESSING_FAILED" | null;
+	createdAt: string;
+};

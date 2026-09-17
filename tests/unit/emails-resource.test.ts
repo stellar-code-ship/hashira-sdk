@@ -75,4 +75,22 @@ describe("EmailsResource", () => {
 
 		expect("scheduledAt" in bodyOf(calls[0])).toBe(false);
 	});
+
+	it("reads one message back by id", async () => {
+		const { emails, calls } = emailsResource({ id: "email-1", status: "SENT" });
+
+		const email = await emails.get("email-1");
+
+		expect(calls[0]?.url).toBe("https://example.test/v1/emails/email-1");
+		expect(calls[0]?.init?.method).toBe("GET");
+		expect(email.id).toBe("email-1");
+	});
+
+	it("escapes an id rather than letting it change the path", async () => {
+		const { emails, calls } = emailsResource({ id: "x" });
+
+		await emails.get("../../admin");
+
+		expect(calls[0]?.url).toBe("https://example.test/v1/emails/..%2F..%2Fadmin");
+	});
 });

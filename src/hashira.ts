@@ -35,7 +35,7 @@ export class Hashira {
 	}
 }
 
-export type { SendEmailResponse } from "./generated/emails.gen.js";
+export type { GetEmailResponse, SendEmailResponse } from "./generated/emails.gen.js";
 export type { HashiraErrorCode } from "./generated/error-codes.gen.js";
 export type { HashiraErrorFields, HashiraErrorOptions } from "./hashira-error.js";
 export { HashiraError } from "./hashira-error.js";

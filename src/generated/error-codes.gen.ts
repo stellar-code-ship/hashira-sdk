@@ -9,6 +9,7 @@
  * version was published still type-checks — a client that switches on it keeps compiling.
  */
 export type HashiraErrorCode =
+	| "EMAIL_NOT_FOUND"
 	| "FROM_DOMAIN_NOT_REGISTERED"
 	| "INVALID_API_KEY"
 	| "INVALID_JSON_BODY"
