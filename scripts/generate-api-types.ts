@@ -9,7 +9,7 @@
  * it. Both modes share one render pass, so they cannot disagree about paths or format.
  */
 
-const defaultDocumentUrl = "https://hashira.stellarcode.space/openapi.json";
+const defaultDocumentUrl = "https://api.hashira.stellarcode.space/openapi.json";
 
 /** Point at another deployment — a local app, or staging — without editing this file. */
 const documentUrl = process.env.HASHIRA_OPENAPI_URL ?? defaultDocumentUrl;
@@ -29,11 +29,9 @@ const shippedTags = ["Emails"] as const;
  * type. An unnamed repeated shape fails the run rather than being inlined twice.
  */
 const sharedShapeNames: Record<string, string> = {
-	"attachmentCount,bccAddresses,ccAddresses,createdAt,deliveredToAddresses,direction,dkimVerdict,dmarcVerdict,fromAddress,id,inReplyTo,messageId,preview,references,replyToAddresses,scheduledAt,spamVerdict,spfVerdict,status,subject,toAddresses,virusVerdict":
-		"Email",
-	// A message named by nothing but its id. Sending answers with one, and so does each entry in a
-	// delete's results: with no trash left there is no state to report and no date to report it for.
-	id: "EmailReference",
+	// Empty since 2.0, and correctly so: the published document describes one operation, and one
+	// operation cannot repeat a shape. The mechanism stays because the next published endpoint is
+	// what it exists for — an unnamed repeated shape fails the run rather than being inlined twice.
 };
 
 type JsonSchema = Record<string, unknown>;

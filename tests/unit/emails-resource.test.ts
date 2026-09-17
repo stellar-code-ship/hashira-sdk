@@ -38,7 +38,7 @@ describe("EmailsResource", () => {
 			html: "<p>Hi</p>",
 		});
 
-		expect(calls[0]?.url).toBe("https://example.test/api/v1/emails");
+		expect(calls[0]?.url).toBe("https://example.test/v1/emails");
 		expect(calls[0]?.init?.method).toBe("POST");
 		expect(sent.id).toBe("01930000-0000-7000-8000-000000000000");
 	});
@@ -74,75 +74,5 @@ describe("EmailsResource", () => {
 		await emails.send({ from: "a@example.com", to: "b@example.com", subject: "s", html: "<p>h</p>" });
 
 		expect("scheduledAt" in bodyOf(calls[0])).toBe(false);
-	});
-
-	it("passes a list query straight through", async () => {
-		const { emails, calls } = emailsResource({ data: [], nextCursor: null });
-
-		await emails.list({ direction: "SENT", limit: 50 });
-
-		const url = new URL(calls[0]?.url ?? "");
-
-		expect(url.searchParams.get("direction")).toBe("SENT");
-		expect(url.searchParams.get("limit")).toBe("50");
-	});
-
-	it("reads one message by id", async () => {
-		const { emails, calls } = emailsResource({ id: "abc" });
-
-		await emails.get("abc");
-		await emails.getContent("abc");
-
-		expect(calls[0]?.url).toBe("https://example.test/api/v1/emails/abc");
-		expect(calls[1]?.url).toBe("https://example.test/api/v1/emails/abc/content");
-	});
-
-	it("names the messages in the body of a delete", async () => {
-		// The collection has no id in its path, and a query string is not somewhere two hundred ids
-		// can go — so this is the one DELETE in the API that carries a body.
-		const { emails, calls } = emailsResource({ results: [], errors: [] });
-
-		await emails.deleteMany(["a", "b"]);
-
-		expect(calls[0]?.url).toBe("https://example.test/api/v1/emails");
-		expect(calls[0]?.init?.method).toBe("DELETE");
-		expect(bodyOf(calls[0])).toEqual({ emailIds: ["a", "b"] });
-	});
-
-	it("deletes one message as a set of one, since there is no single-message form", async () => {
-		const { emails, calls } = emailsResource({ results: [{ id: "abc" }], errors: [] });
-
-		await emails.deleteMany(["abc"]);
-
-		expect(calls[0]?.url).toBe("https://example.test/api/v1/emails");
-		expect(bodyOf(calls[0])).toEqual({ emailIds: ["abc"] });
-	});
-
-	it("hands back the raw response for an attachment instead of buffering it", async () => {
-		const calls: RecordedCall[] = [];
-
-		const fetch: FetchLike = (url, init) => {
-			calls.push({ url, init });
-
-			return Promise.resolve(
-				new Response("PDF-BYTES", { status: 200, headers: { "content-type": "application/pdf" } }),
-			);
-		};
-
-		const emails = new EmailsResource(new HttpClient("key", { fetch, baseUrl: "https://example.test" }));
-		const response = await emails.downloadAttachment("email-1", "attachment-1");
-
-		expect(response).toBeInstanceOf(Response);
-		expect(response.headers.get("content-type")).toBe("application/pdf");
-		expect(await response.text()).toBe("PDF-BYTES");
-		expect(calls[0]?.url).toBe("https://example.test/api/v1/emails/email-1/attachments/attachment-1");
-	});
-
-	it("escapes an id rather than letting it change the path", async () => {
-		const { emails, calls } = emailsResource({ id: "x" });
-
-		await emails.get("../../admin");
-
-		expect(calls[0]?.url).toBe("https://example.test/api/v1/emails/..%2F..%2Fadmin");
 	});
 });
