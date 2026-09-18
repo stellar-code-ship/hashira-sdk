@@ -1,13 +1,4 @@
-import type {
-	CreateEmailAttachmentLinkResponse,
-	DeleteEmailsResponse,
-	GetEmailContentResponse,
-	GetEmailResponse,
-	ListEmailsQuery,
-	ListEmailsResponse,
-	SendEmailBody,
-	SendEmailResponse,
-} from "../generated/emails.gen.js";
+import type { GetEmailResponse, SendEmailBody, SendEmailResponse } from "../generated/emails.gen.js";
 import type { HttpClient } from "../http-client.js";
 
 /**
@@ -22,9 +13,6 @@ export type SendEmailInput = Omit<SendEmailBody, "scheduledAt"> & {
 	scheduledAt?: Date | string;
 };
 
-/** What `list()` accepts. */
-export type ListEmailsInput = ListEmailsQuery;
-
 function toIsoString(value: Date | string): string {
 	return value instanceof Date ? value.toISOString() : value;
 }
@@ -34,9 +22,12 @@ function toIsoString(value: Date | string): string {
  *
  * A message is composed and sent in one call and is immutable from then on. Sending is accepted
  * asynchronously — a resolved `send()` means the message was queued, not delivered; the outcome
- * arrives as an `EMAIL_SENT` or `EMAIL_FAILED` webhook, or by reading the message back with
- * `get()`. Deleting is the other end of that: `deleteMany()` destroys, and nothing here puts a
- * message back.
+ * arrives as an `EMAIL_SENT` or `EMAIL_FAILED` webhook.
+ *
+ * Sending and reading one message back are the whole of it, and the whole of this client. Listing,
+ * deleting and fetching attachments are not removed from the API — it still serves every one of
+ * them — but they moved off the published surface to `/internal/v1` and out of what this package
+ * promises. A consumer that needs them calls that prefix directly with the same key.
  */
 export class EmailsResource {
 	readonly #client: HttpClient;
@@ -55,77 +46,14 @@ export class EmailsResource {
 	}
 
 	/**
-	 * Lists messages, newest first.
+	 * Reads one message's current state.
 	 *
-	 * Paging is keyset on the id: pass the previous page's `nextCursor` back as `cursor`. A null
-	 * `nextCursor` is the last page.
+	 * This is the other half of `send()` rather than a second feature: sending is accepted
+	 * asynchronously, the `EMAIL_SENT` or `EMAIL_FAILED` webhook that follows carries the message's
+	 * id and nothing else, and this is how that id becomes an answer. Metadata only — the stored
+	 * message is never read, so calling it once per webhook is cheap.
 	 */
-	list(query: ListEmailsInput = {}): Promise<ListEmailsResponse> {
-		return this.#client.request({ method: "GET", path: "/emails", query: { ...query } });
-	}
-
-	/** Reads one message's metadata. */
 	get(emailId: string): Promise<GetEmailResponse> {
 		return this.#client.request({ method: "GET", path: `/emails/${encodeURIComponent(emailId)}` });
-	}
-
-	/**
-	 * Reads one message's body and the metadata of its attachments.
-	 *
-	 * The body is not stored in the database — it is read back out of the stored raw message — so
-	 * this is a heavier call than `get()`. Each attachment arrives with a signed `downloadUrl` that
-	 * needs no API key and stops working within the hour.
-	 */
-	getContent(emailId: string): Promise<GetEmailContentResponse> {
-		return this.#client.request({ method: "GET", path: `/emails/${encodeURIComponent(emailId)}/content` });
-	}
-
-	/**
-	 * Destroys up to 200 messages, with their stored bodies and every attachment.
-	 *
-	 * The only deletion this API has, and there is no undoing it: no trash, no restore, and no
-	 * single-message form — a set is how it answers, and a caller wanting to delete one sends a set
-	 * of one. Any window between deciding and destroying is yours to keep, because how long a message
-	 * should survive is a question about the mailboxes holding it, which the API cannot see.
-	 *
-	 * Unlike every other operation this answers per item rather than all-or-nothing: what it
-	 * destroyed comes back in `results`, and what it could not act on in `errors`, under a single
-	 * success. One unknown id never refuses the rest, and repeating a call is harmless — what is
-	 * already gone comes back as `EMAIL_NOT_FOUND`.
-	 */
-	deleteMany(emailIds: string[]): Promise<DeleteEmailsResponse> {
-		return this.#client.request({
-			method: "DELETE",
-			path: "/emails",
-			body: { emailIds },
-		});
-	}
-
-	/**
-	 * Downloads one attachment's bytes.
-	 *
-	 * Answers with the raw `Response` so the caller decides how to read it — `arrayBuffer()`,
-	 * `blob()`, or streaming `body` straight through. An attachment can be large, and buffering one
-	 * on the caller's behalf is not the SDK's call to make.
-	 */
-	downloadAttachment(emailId: string, attachmentId: string): Promise<Response> {
-		return this.#client.send({
-			method: "GET",
-			path: `/emails/${encodeURIComponent(emailId)}/attachments/${encodeURIComponent(attachmentId)}`,
-		});
-	}
-
-	/**
-	 * Mints a signed link to one attachment.
-	 *
-	 * The signature is the authorization, so the link can be handed to a browser directly instead of
-	 * fetching the bytes with your key and serving them on again. Treat it as the bearer capability
-	 * it is: one attachment, good for about an hour.
-	 */
-	createAttachmentLink(emailId: string, attachmentId: string): Promise<CreateEmailAttachmentLinkResponse> {
-		return this.#client.request({
-			method: "POST",
-			path: `/emails/${encodeURIComponent(emailId)}/attachments/${encodeURIComponent(attachmentId)}/link`,
-		});
 	}
 }

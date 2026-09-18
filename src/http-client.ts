@@ -86,7 +86,7 @@ export class HttpClient {
 		}
 
 		this.#apiKey = apiKey;
-		// A trailing slash on the origin would otherwise join into `//api/v1`, which some proxies
+		// A trailing slash on the origin would otherwise join into `//v1`, which some proxies
 		// answer with a redirect the request's Authorization header does not survive.
 		this.#baseUrl = (options.baseUrl ?? defaultBaseUrl).replace(/\/+$/, "");
 		this.#fetch = resolvedFetch;

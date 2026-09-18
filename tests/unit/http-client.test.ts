@@ -43,7 +43,7 @@ describe("HttpClient", () => {
 			path: "/emails",
 		});
 
-		expect(calls[0]?.url).toBe("https://example.test/api/v1/emails");
+		expect(calls[0]?.url).toBe("https://example.test/v1/emails");
 	});
 
 	it("does not double the slash when the base URL has a trailing one", async () => {
@@ -54,7 +54,7 @@ describe("HttpClient", () => {
 			path: "/emails",
 		});
 
-		expect(calls[0]?.url).toBe("https://example.test/api/v1/emails");
+		expect(calls[0]?.url).toBe("https://example.test/v1/emails");
 	});
 
 	it("serializes a boolean query parameter as a string, which is what the API parses", async () => {
